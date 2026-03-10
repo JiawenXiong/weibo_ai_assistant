@@ -16,11 +16,14 @@
 
   /**
    * 检测当前页面类型
-   * @returns {string} 'main' | 'search'
+   * @returns {string} 'main' | 'search' | 'mobile'
    */
   function getPageType() {
     if (location.hostname === 's.weibo.com') {
       return 'search';
+    }
+    if (location.hostname === 'm.weibo.cn') {
+      return 'mobile';
     }
     return 'main';
   }
@@ -44,6 +47,22 @@
       ];
 
       for (const selector of searchTextSelectors) {
+        const textEl = card.querySelector(selector);
+        if (textEl && textEl.textContent.trim()) {
+          return textEl.textContent.trim();
+        }
+      }
+    }
+
+    if (pageType === 'mobile') {
+      // 移动版文本选择器
+      const mobileTextSelectors = [
+        '.weibo-text',
+        '.weibo-og .weibo-text',
+        '.weibo-rp .weibo-text'
+      ];
+
+      for (const selector of mobileTextSelectors) {
         const textEl = card.querySelector(selector);
         if (textEl && textEl.textContent.trim()) {
           return textEl.textContent.trim();
@@ -109,6 +128,18 @@
       const actionEl = card.querySelector('[action-data*="mid="]');
       if (actionEl) {
         const match = actionEl.getAttribute('action-data').match(/mid=(\d+)/);
+        if (match) {
+          card.setAttribute(DATA_ID_ATTR, match[1]);
+          return match[1];
+        }
+      }
+    }
+
+    if (pageType === 'mobile') {
+      // 移动版：从链接提取status ID
+      const statusLink = card.querySelector('a[href*="/status/"]');
+      if (statusLink) {
+        const match = statusLink.href.match(/status\/(\d+)/);
         if (match) {
           card.setAttribute(DATA_ID_ATTR, match[1]);
           return match[1];
@@ -397,6 +428,22 @@
       }
     }
 
+    if (pageType === 'mobile') {
+      // 移动版操作栏
+      const mobileSelectors = [
+        'footer.f-footer-ctrl',
+        '.f-footer-ctrl',
+        'footer'
+      ];
+
+      for (const selector of mobileSelectors) {
+        const el = card.querySelector(selector);
+        if (el) {
+          return el;
+        }
+      }
+    }
+
     // 新版微博操作栏选择器
     const selectors = [
       // footer区域（新版）
@@ -451,6 +498,18 @@
 
       // 检查是否包含文本内容（排除用户推荐卡片等）
       const hasContent = card.querySelector('p[node-type="feed_list_content"], .txt');
+      if (!hasContent) {
+        return;
+      }
+    } else if (pageType === 'mobile') {
+      // 移动版：检查是否是微博卡片
+      const isWeiboCard = card.classList.contains('card') && card.classList.contains('f-weibo');
+      if (!isWeiboCard) {
+        return;
+      }
+
+      // 检查是否包含微博文本（排除非微博内容）
+      const hasContent = card.querySelector('.weibo-text');
       if (!hasContent) {
         return;
       }
@@ -513,6 +572,13 @@
         '.card-wrap[mid]',
         '.card-wrap[action-type="feed_list_item"]',
         '.card-wrap'
+      ];
+    } else if (pageType === 'mobile') {
+      // 移动版选择器
+      cardSelectors = [
+        '.wb-item-wrap .wb-item .card.f-weibo',
+        '.card.f-weibo',
+        '.wb-item .card'
       ];
     } else {
       // 主站选择器
